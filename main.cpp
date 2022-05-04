@@ -15,16 +15,31 @@ struct output_token {
 int main() {
     std::vector<output_token> output;
 
-    for (char i : str) {
-        output_token token = output_token();
-        token.length = 0;
-        token.offset = 0;
-        token.next_symbol = i;
+    int buffer_start = 0;
+
+    while (buffer_start < str.length()) {
+        for (int i = buffer_start; i >= 0; i--) {
+               int match_length = 0;
+               //if (str[buffer_start] == str[i]) {
+               //        int j = 0;
+               //        while (str[buffer_start + j] == str[i + j]) {
+               //                match_length++;
+               //                j++;
+               //        }
+               //}
+               auto token = output_token();
+               token.offset = i;
+               token.length = match_length;
+               token.next_symbol = str[i + match_length];
+	       output.push_back(token);
+        }
+        buffer_start++;
     }
 
     for (auto &item : output) {
         std::cout << "(" << item.offset << "," << item.length << "," << item.next_symbol << ")" << std::endl;
     }
 
+    std::cout << "Hello there!" << std::endl;
     return 0;
 }
