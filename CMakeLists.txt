@@ -3,4 +3,6 @@ project (compression)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(compression main.cpp)
+set(SOURCES src/main.cpp src/lz77/lz77.cpp)
+
+add_executable(compression ${SOURCES})
