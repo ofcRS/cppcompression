@@ -6,11 +6,12 @@ const std::string str = "sir sid eastman Nulla lobortis nunc at cursus malesuada
 //const std::string str = "sir sid eastman";
 
 int main() {
-    auto output = LZ77().lm77_compress(str);
+    auto output = LZ77().lz77_compress(str);
 
     for (auto &item: output) {
         std::cout << "(" << item.offset << "," << item.length << "," << item.next_symbol << ")" << std::endl;
     }
 
+    LZ77().lz77_decompress(output);
     return 0;
 }

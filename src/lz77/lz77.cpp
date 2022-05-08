@@ -3,8 +3,21 @@
 #include "vector"
 
 #include "lz77.h"
+std::string LZ77::lz77_decompress(std::vector<output_token> tokens) {
+	std::string result = "";
 
-std::vector<output_token> LZ77::lm77_compress(std::string str) {
+	for (auto &token : tokens) {
+		if (token.offset > 0) {
+			int end_of_string = result.length() - 1;
+	        	result += result.substr(end_of_string - token.offset + 1, token.length);
+		}
+		result.push_back(token.next_symbol);
+	}
+	std::cout << result << std::endl;
+        return result;
+}
+
+std::vector<output_token> LZ77::lz77_compress(std::string str) {
     std::vector<output_token> output;
 
     int buffer_start = 0;

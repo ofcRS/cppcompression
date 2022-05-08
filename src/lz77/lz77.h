@@ -12,7 +12,8 @@ struct output_token {
 
 class LZ77 {
 public:
-    std::vector<output_token> lm77_compress(std::string str);
+    std::vector<output_token> lz77_compress(std::string str);
+    std::string lz77_decompress(std::vector<output_token> tokens);
 };
 
 #endif
