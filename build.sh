@@ -1,1 +1,1 @@
-g++ -std=c++17 -o build/out main.cpp
+g++ -std=c++17 src/**/*.cpp src/main.cpp -o build/out 
