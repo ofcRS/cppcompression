@@ -1,19 +1,22 @@
-#ifndef lz77
-#define lz77
+#pragma once
 
-#include "vector"
-#include "string"
+#include <cstddef>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
 
-struct output_token {
-    int offset;
-    int length;
-    char next_symbol;
+namespace compression {
+
+struct Token {
+    std::size_t offset = 0;
+    std::size_t length = 0;
+    char next_char = '\0';
 };
 
-class LZ77 {
-public:
-    std::vector<output_token> lz77_compress(std::string str);
-    std::string lz77_decompress(std::vector<output_token> tokens);
-};
+[[nodiscard]] std::vector<Token> lz77_compress(std::string_view input,
+                                               std::size_t window_size = 4096);
 
-#endif
+[[nodiscard]] std::string lz77_decompress(std::span<const Token> tokens);
+
+} // namespace compression

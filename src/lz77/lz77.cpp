@@ -1,63 +1,78 @@
-#include <iostream>
-#include "string"
-#include "vector"
-
 #include "lz77.h"
-std::string LZ77::lz77_decompress(std::vector<output_token> tokens) {
-	std::string result = "";
 
-	for (auto &token : tokens) {
-		if (token.offset > 0) {
-			int end_of_string = result.length() - 1;
-	        	result += result.substr(end_of_string - token.offset + 1, token.length);
-		}
-		result.push_back(token.next_symbol);
-	}
-	std::cout << result << std::endl;
-        return result;
-}
+#include <algorithm>
 
-std::vector<output_token> LZ77::lz77_compress(std::string str) {
-    std::vector<output_token> output;
+namespace compression {
 
-    int buffer_start = 0;
+std::vector<Token> lz77_compress(std::string_view input, std::size_t window_size) {
+    std::vector<Token> output;
+    std::size_t pos = 0;
 
-    while (buffer_start < str.length()) {
-        int max_match_length = 0;
-        int max_match_offset = 0;
-        for (int i = buffer_start - 1; i >= 0; i--) {
-            int current_length = 0;
+    while (pos < input.size()) {
+        std::size_t best_length = 0;
+        std::size_t best_offset = 0;
 
-            if (str[buffer_start] == str[i]) {
-                int j = 0;
-                while (str[buffer_start + j] == str[i + j]) {
-                    current_length++;
-                    j++;
-                }
+        std::size_t search_start = (pos > window_size) ? pos - window_size : 0;
+
+        for (std::size_t i = search_start; i < pos; ++i) {
+            std::size_t match_len = 0;
+            while (pos + match_len < input.size()
+                   && i + match_len < pos
+                   && input[pos + match_len] == input[i + match_len]) {
+                ++match_len;
             }
-            if (current_length > max_match_length) {
-                max_match_length = current_length;
-                max_match_offset = buffer_start - i;
-            }
-            //std::cout << "max match offset = " << max_match_offset << std::endl;
 
+            if (match_len > best_length) {
+                best_length = match_len;
+                best_offset = pos - i;
+            }
         }
-        if (max_match_length > 0) {
-            auto token = output_token();
-            token.offset = max_match_offset;
-            token.length = max_match_length;
-            token.next_symbol = str[buffer_start + max_match_length];
-            output.push_back(token);
-            buffer_start += max_match_length + 1;
+
+        if (best_length > 0 && pos + best_length < input.size()) {
+            output.emplace_back(Token{
+                .offset = best_offset,
+                .length = best_length,
+                .next_char = input[pos + best_length],
+            });
+            pos += best_length + 1;
+        } else if (best_length > 0 && pos + best_length == input.size()) {
+            // Match extends to the very end — emit without next_char
+            output.emplace_back(Token{
+                .offset = best_offset,
+                .length = best_length,
+                .next_char = '\0',
+            });
+            pos += best_length;
         } else {
-            auto token = output_token();
-            token.offset = 0;
-            token.length = 0;
-            token.next_symbol = str[buffer_start];
-            output.push_back(token);
-            buffer_start++;
+            output.emplace_back(Token{
+                .offset = 0,
+                .length = 0,
+                .next_char = input[pos],
+            });
+            ++pos;
         }
     }
 
     return output;
 }
+
+std::string lz77_decompress(std::span<const Token> tokens) {
+    std::string result;
+    result.reserve(tokens.size() * 2);
+
+    for (const auto& token : tokens) {
+        if (token.offset > 0) {
+            std::size_t start = result.size() - token.offset;
+            for (std::size_t i = 0; i < token.length; ++i) {
+                result += result[start + i];
+            }
+        }
+        if (token.next_char != '\0') {
+            result += token.next_char;
+        }
+    }
+
+    return result;
+}
+
+} // namespace compression
