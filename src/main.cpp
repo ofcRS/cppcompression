@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "lz77/lz77.h"
+#include "deflate/deflate.h"
 
 constexpr std::string_view test_input =
     "sir sid eastman Nulla lobortis nunc at cursus malesuada. Integer quis "
@@ -19,17 +20,37 @@ constexpr std::string_view test_input =
     "facilisis sem.";
 
 int main() {
+    // ── LZ77 demo ───────────────────────────────────────────────────────
+    std::cout << "=== LZ77 ===\n";
     auto tokens = compression::lz77_compress(test_input);
 
     for (const auto& [offset, length, next_char] : tokens) {
-        std::cout << std::format("({},{},{})", offset, length, next_char) << '\n';
+        std::cout << std::format("({},{},{})", offset, length, next_char);
     }
+    std::cout << '\n';
 
-    auto decompressed = compression::lz77_decompress(tokens);
-    std::cout << '\n' << decompressed << '\n';
+    auto lz77_decompressed = compression::lz77_decompress(tokens);
+    assert(lz77_decompressed == test_input);
+    std::cout << "LZ77 round-trip OK (" << tokens.size() << " tokens)\n\n";
 
-    assert(decompressed == test_input);
-    std::cout << "\nRound-trip OK: decompressed matches original\n";
+    // ── DEFLATE demo ────────────────────────────────────────────────────
+    std::cout << "=== DEFLATE ===\n";
+    auto input_bytes = std::span<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(test_input.data()), test_input.size());
+
+    auto compressed = compression::deflate_compress(input_bytes);
+    auto decompressed = compression::deflate_decompress(compressed);
+
+    std::string_view decompressed_str(
+        reinterpret_cast<const char*>(decompressed.data()), decompressed.size());
+
+    assert(decompressed_str == test_input);
+
+    std::cout << std::format("Original:     {} bytes\n", test_input.size());
+    std::cout << std::format("Compressed:   {} bytes\n", compressed.size());
+    std::cout << std::format("Ratio:        {:.1f}%\n",
+        100.0 * static_cast<double>(compressed.size()) / static_cast<double>(test_input.size()));
+    std::cout << "DEFLATE round-trip OK\n";
 
     return 0;
 }
