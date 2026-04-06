@@ -1,10 +1,12 @@
 #include <cassert>
+#include <cstdio>
 #include <format>
 #include <iostream>
 #include <string_view>
 
 #include "lz77/lz77.h"
 #include "deflate/deflate.h"
+#include "gzip/gzip.h"
 
 constexpr std::string_view test_input =
     "sir sid eastman Nulla lobortis nunc at cursus malesuada. Integer quis "
@@ -50,7 +52,30 @@ int main() {
     std::cout << std::format("Compressed:   {} bytes\n", compressed.size());
     std::cout << std::format("Ratio:        {:.1f}%\n",
         100.0 * static_cast<double>(compressed.size()) / static_cast<double>(test_input.size()));
-    std::cout << "DEFLATE round-trip OK\n";
+    std::cout << "DEFLATE round-trip OK\n\n";
+
+    // ── GZIP demo ──────────────────────────────────────────────────────
+    std::cout << "=== GZIP ===\n";
+    auto gz_compressed = compression::gzip_compress(input_bytes);
+    auto gz_decompressed = compression::gzip_decompress(gz_compressed);
+
+    std::string_view gz_decompressed_str(
+        reinterpret_cast<const char*>(gz_decompressed.data()), gz_decompressed.size());
+
+    assert(gz_decompressed_str == test_input);
+
+    std::cout << std::format("Original:     {} bytes\n", test_input.size());
+    std::cout << std::format("Gzip:         {} bytes (DEFLATE + 18 bytes header/trailer)\n", gz_compressed.size());
+    std::cout << std::format("Ratio:        {:.1f}%\n",
+        100.0 * static_cast<double>(gz_compressed.size()) / static_cast<double>(test_input.size()));
+    std::cout << "GZIP round-trip OK\n";
+
+    // Write gzip output to file for verification with system gunzip
+    if (auto* f = std::fopen("test_output.gz", "wb")) {
+        std::fwrite(gz_compressed.data(), 1, gz_compressed.size(), f);
+        std::fclose(f);
+        std::cout << "Written test_output.gz (verify with: gunzip -k test_output.gz)\n";
+    }
 
     return 0;
 }

@@ -9,6 +9,7 @@ set(SOURCES
     src/huffman/huffman.cpp
     src/deflate/bitstream.cpp
     src/deflate/deflate.cpp
+    src/gzip/gzip.cpp
 )
 
 add_executable(compression ${SOURCES})
