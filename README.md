@@ -29,26 +29,30 @@ Wraps DEFLATE output in the gzip container format:
 
 Canonical Huffman tree construction from symbol frequencies. Used internally by DEFLATE, also available as a standalone module.
 
+## CLI Tool
+
+`cpgz` compresses and decompresses files in gzip format, compatible with standard `gunzip`.
+
+```
+cpgz file.txt              # compress → file.txt.gz, removes original
+cpgz -d file.txt.gz        # decompress → file.txt, removes original
+cpgz -k file.txt           # compress, keep original
+cpgz -f file.txt           # overwrite existing output
+cpgz -c file.txt | gunzip  # compress to stdout (pipe-friendly)
+cpgz -vk file.txt          # verbose: print compression ratio
+```
+
+Options: `-d` decompress, `-k` keep, `-f` force, `-c` stdout, `-v` verbose, `-h` help.
+
 ## Build
 
 ```
-mkdir -p build
-g++ -std=c++23 -I src -o build/out \
-    src/main.cpp \
-    src/lz77/lz77.cpp \
-    src/huffman/huffman.cpp \
-    src/deflate/bitstream.cpp \
-    src/deflate/deflate.cpp \
-    src/gzip/gzip.cpp
-./build/out
-```
-
-Or with CMake:
-
-```
 cmake -B build && cmake --build build
-./build/compression
 ```
+
+This produces two executables:
+- `./build/compression` — demo and round-trip tests
+- `./build/cpgz` — CLI tool
 
 ## Project structure
 
@@ -60,4 +64,5 @@ src/
   deflate/deflate.h, deflate.cpp — DEFLATE compress/decompress
   deflate/bitstream.h, .cpp      — bit-level I/O (LSB-first)
   gzip/gzip.h, gzip.cpp         — GZIP format with CRC-32
+  cli/cpgz.cpp                   — command-line tool
 ```
