@@ -40,9 +40,10 @@ cpgz -k file.txt           # compress, keep original
 cpgz -f file.txt           # overwrite existing output
 cpgz -c file.txt | gunzip  # compress to stdout (pipe-friendly)
 cpgz -vk file.txt          # verbose: print compression ratio
+cpgz -l file.txt.gz        # list size/ratio/name without decompressing
 ```
 
-Options: `-d` decompress, `-k` keep, `-f` force, `-c` stdout, `-v` verbose, `-h` help.
+Options: `-d` decompress, `-k` keep, `-f` force, `-c` stdout, `-l` list, `-v` verbose, `-h` help.
 
 ## Build
 

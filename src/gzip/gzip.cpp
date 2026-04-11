@@ -166,4 +166,53 @@ std::vector<uint8_t> gzip_decompress(std::span<const uint8_t> input) {
     return decompressed;
 }
 
+GzipInfo gzip_info(std::span<const uint8_t> input) {
+    if (input.size() < 18) {
+        throw std::runtime_error("gzip: input too short");
+    }
+    if (input[0] != 0x1F || input[1] != 0x8B) {
+        throw std::runtime_error("gzip: invalid magic bytes");
+    }
+    if (input[2] != 8) {
+        throw std::runtime_error("gzip: unsupported compression method");
+    }
+
+    GzipInfo info{};
+    uint8_t flg = input[3];
+    info.mtime = read_le32(input, 4);
+
+    std::size_t pos = 10;
+
+    if (flg & FEXTRA) {
+        if (pos + 2 > input.size()) throw std::runtime_error("gzip: truncated FEXTRA");
+        uint16_t xlen = read_le16(input, pos);
+        pos += 2 + xlen;
+    }
+    if (flg & FNAME) {
+        std::size_t start = pos;
+        while (pos < input.size() && input[pos] != 0) ++pos;
+        if (pos >= input.size()) throw std::runtime_error("gzip: truncated FNAME");
+        info.original_name.assign(
+            reinterpret_cast<const char*>(input.data() + start), pos - start);
+        ++pos; // skip null terminator
+    }
+    if (flg & FCOMMENT) {
+        while (pos < input.size() && input[pos] != 0) ++pos;
+        if (pos >= input.size()) throw std::runtime_error("gzip: truncated FCOMMENT");
+        ++pos;
+    }
+    if (flg & FHCRC) {
+        pos += 2;
+    }
+
+    if (pos + 8 > input.size()) {
+        throw std::runtime_error("gzip: truncated data");
+    }
+
+    std::size_t trailer_pos = input.size() - 8;
+    info.crc32 = read_le32(input, trailer_pos);
+    info.uncompressed_size = read_le32(input, trailer_pos + 4);
+    return info;
+}
+
 } // namespace compression

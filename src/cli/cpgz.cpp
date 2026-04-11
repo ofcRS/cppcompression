@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <optional>
 #include <span>
@@ -18,6 +19,7 @@ struct Options {
     bool force      = false;
     bool to_stdout  = false;
     bool verbose    = false;
+    bool list       = false;
     std::vector<fs::path> files;
 };
 
@@ -32,6 +34,7 @@ static void print_usage(const char* prog) {
         << "  -k, --keep         Keep original file\n"
         << "  -f, --force        Overwrite existing output file\n"
         << "  -c, --stdout       Write to stdout\n"
+        << "  -l, --list         List contents of gzip file(s)\n"
         << "  -v, --verbose      Print compression statistics\n"
         << "  -h, --help         Show this help\n";
 }
@@ -53,6 +56,7 @@ static std::optional<Options> parse_args(int argc, char* argv[]) {
             else if (arg == "--keep")       opts.keep = true;
             else if (arg == "--force")      opts.force = true;
             else if (arg == "--stdout")     opts.to_stdout = true;
+            else if (arg == "--list")       opts.list = true;
             else if (arg == "--verbose")    opts.verbose = true;
             else if (arg == "--help") {
                 print_usage(argv[0]);
@@ -68,6 +72,7 @@ static std::optional<Options> parse_args(int argc, char* argv[]) {
                     case 'k': opts.keep = true; break;
                     case 'f': opts.force = true; break;
                     case 'c': opts.to_stdout = true; break;
+                    case 'l': opts.list = true; break;
                     case 'v': opts.verbose = true; break;
                     case 'h':
                         print_usage(argv[0]);
@@ -180,6 +185,48 @@ static bool process_file(const fs::path& input, const Options& opts) {
     }
 }
 
+// ── List mode ──────────────────────────────────────────────────────────────
+
+static void print_list_header() {
+    std::cout
+        << "   compressed  uncompressed  ratio  uncompressed_name\n";
+}
+
+static bool list_file(const fs::path& input) {
+    try {
+        if (!fs::exists(input) || !fs::is_regular_file(input)) {
+            std::cerr << input.string() << ": no such file\n";
+            return false;
+        }
+
+        auto data = read_file(input);
+        auto info = compression::gzip_info(data);
+
+        // Ratio is relative to the reported uncompressed size. ISIZE is mod 2^32,
+        // so for files ≥ 4GiB the ratio is indicative, not exact.
+        double ratio = info.uncompressed_size == 0
+            ? 0.0
+            : 100.0 * (1.0 - static_cast<double>(data.size())
+                              / static_cast<double>(info.uncompressed_size));
+
+        // Prefer the name embedded in the gzip header; fall back to stripping ".gz".
+        std::string name = info.original_name;
+        if (name.empty()) {
+            auto stem = input.extension() == ".gz" ? input.stem() : input.filename();
+            name = stem.string();
+        }
+
+        std::cout << std::setw(13) << data.size()
+                  << std::setw(14) << info.uncompressed_size
+                  << ' ' << std::fixed << std::setprecision(1) << std::setw(5) << ratio << "%  "
+                  << name << '\n';
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << input.string() << ": " << e.what() << '\n';
+        return false;
+    }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]) {
@@ -193,6 +240,15 @@ int main(int argc, char* argv[]) {
     }
 
     bool all_ok = true;
+
+    if (opts->list) {
+        print_list_header();
+        for (const auto& file : opts->files) {
+            if (!list_file(file)) all_ok = false;
+        }
+        return all_ok ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+
     for (const auto& file : opts->files) {
         if (!process_file(file, *opts)) {
             all_ok = false;
